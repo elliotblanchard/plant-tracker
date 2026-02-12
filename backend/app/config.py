@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     # Known physical distance between major tick marks (mm)
     ruler_tick_distance_mm: float = 10.0
     # Optional fixed ROI for the ruler region (x, y, w, h) – None = auto-detect
-    ruler_roi: list[int] | None = None
+    # Tuned for the test-plant images (1440x1080): top-right strip
+    ruler_roi: list[int] | None = [480, 0, 960, 75]
 
     # ── Plant segmentation ─────────────────────────────────────────────
     # HSV ranges for green-plant masking (PlantCV thresholds)
@@ -35,6 +36,13 @@ class Settings(BaseSettings):
     value_lower: int = 40
     # Minimum contour area (pixels) to keep – filters noise
     min_plant_area_px: int = 500
+    # Exclusion zones [x, y, w, h] -- areas to zero out before segmentation
+    # (fallback if petri dish circle detection fails)
+    exclusion_zones: list[list[int]] = [
+        [0, 830, 250, 250],      # color chart (bottom-left)
+        [1100, 780, 340, 300],   # QR code (bottom-right)
+        [400, 0, 1040, 80],      # ruler strip (top)
+    ]
 
     # ── Health score weights ───────────────────────────────────────────
     health_weight_greenness: float = 0.4
@@ -45,7 +53,7 @@ class Settings(BaseSettings):
     healthy_saturation_ref: float = 0.55
 
     # ── Overgrowth ─────────────────────────────────────────────────────
-    overgrowth_threshold_mm2: float = 400.0
+    overgrowth_threshold_mm2: float = 40000.0
 
     # ── API ─────────────────────────────────────────────────────────────
     api_host: str = "0.0.0.0"

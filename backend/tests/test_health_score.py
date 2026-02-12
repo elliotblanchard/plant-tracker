@@ -79,7 +79,7 @@ class TestIsOvergrown:
         assert is_overgrown(100.0) is False
 
     def test_above_threshold_is_overgrown(self) -> None:
-        assert is_overgrown(999.0) is True
+        assert is_overgrown(99999.0) is True
 
     def test_none_area_not_overgrown(self) -> None:
         assert is_overgrown(None) is False

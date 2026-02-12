@@ -48,12 +48,18 @@ def calibrate_from_ruler(
         A ``CalibrationResult`` with ``px_per_mm`` (or ``None`` on failure).
     """
     tick_distance_mm = tick_distance_mm or settings.ruler_tick_distance_mm
-    roi = roi or settings.ruler_roi
+    if roi is None:
+        roi = settings.ruler_roi
 
-    # Crop to ROI if provided
-    if roi is not None:
+    # Crop to ROI if provided and non-empty
+    if roi is not None and len(roi) == 4:
         x, y, w, h = roi
-        image = image[y : y + h, x : x + w]
+        cropped = image[y : y + h, x : x + w]
+        if cropped.size > 0:
+            image = cropped
+
+    if image.size == 0:
+        return CalibrationResult(px_per_mm=None, ruler_detected=False)
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 

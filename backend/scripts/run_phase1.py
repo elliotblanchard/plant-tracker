@@ -106,7 +106,11 @@ def main() -> None:
             # Now that we have the plant, look up previous measurement for growth
             prev = get_previous_measurement(db, plant.id, captured_at)
             if prev is not None and prev.measured_at is not None:
-                delta_hours = (captured_at - prev.measured_at).total_seconds() / 3600.0
+                # Ensure both datetimes are timezone-aware for subtraction
+                prev_time = prev.measured_at
+                if prev_time.tzinfo is None:
+                    prev_time = prev_time.replace(tzinfo=timezone.utc)
+                delta_hours = (captured_at - prev_time).total_seconds() / 3600.0
                 if delta_hours > 0 and result.area_mm2 is not None and prev.area_mm2 is not None:
                     result.growth_rate = (result.area_mm2 - prev.area_mm2) / delta_hours
                     previous_health = prev.health_score
@@ -129,7 +133,7 @@ def main() -> None:
                 captured_at=captured_at,
             )
 
-            # Store measurement
+            # Store measurement (align measured_at with captured_at for time-series queries)
             create_measurement(
                 db,
                 image_id=image_record.id,
@@ -143,6 +147,7 @@ def main() -> None:
                 health_score=result.health_score,
                 growth_rate=result.growth_rate,
                 is_overgrown=result.is_overgrown,
+                measured_at=captured_at,
             )
 
             logger.info(

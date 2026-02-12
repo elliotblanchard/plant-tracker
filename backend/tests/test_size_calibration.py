@@ -24,7 +24,9 @@ def test_calibrate_horizontal_ruler(ruler_image: tuple[np.ndarray, float]) -> No
 def test_calibrate_blank_image() -> None:
     """Calibration should fail gracefully on a blank image."""
     blank = np.full((100, 400, 3), 200, dtype=np.uint8)
-    result = calibrate_from_ruler(blank)
+    # Pass explicit roi=[] to disable the default ROI (which would
+    # crop this small test image to an empty array)
+    result = calibrate_from_ruler(blank, roi=[])
     # May or may not detect ruler, but should not crash
     assert isinstance(result, CalibrationResult)
 

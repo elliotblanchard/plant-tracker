@@ -110,6 +110,7 @@ def run_analysis(
             health_score=result.health_score,
             growth_rate=result.growth_rate,
             is_overgrown=result.is_overgrown,
+            measured_at=captured_at,
         )
 
     return AnalysisResult(
