@@ -39,6 +39,13 @@ export default function PlantDetail() {
     value: m.health_score,
   }));
 
+  const growthRateData = sortedMeasurements
+    .filter((m) => m.growth_rate != null)
+    .map((m) => ({
+      label: new Date(m.measured_at).toLocaleDateString(),
+      value: m.growth_rate as number,
+    }));
+
   const latest = sortedMeasurements[sortedMeasurements.length - 1];
   const hasOvergrowth = latest?.is_overgrown ?? false;
   const hasLowHealth = (latest?.health_score ?? 100) < 40;
@@ -98,6 +105,14 @@ export default function PlantDetail() {
           color="#4caf50"
           yLabel="Score (0–100)"
         />
+        {growthRateData.length > 0 && (
+          <TimeSeriesChart
+            data={growthRateData}
+            title="Growth Rate (mm²/h)"
+            color="#ff9800"
+            yLabel="mm²/h"
+          />
+        )}
       </div>
 
       {/* Latest metrics table */}
