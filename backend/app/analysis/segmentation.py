@@ -109,12 +109,19 @@ def _build_roi_mask(image: np.ndarray) -> tuple[np.ndarray | None, tuple[int, in
 
     exclusion_zones = settings.exclusion_zones
     if exclusion_zones:
-        roi_mask = np.full((h, w), 255, dtype=np.uint8)
-        for zone in exclusion_zones:
-            x, y, zw, zh = zone
-            roi_mask[y : y + zh, x : x + zw] = 0
-        logger.info("Applied %d exclusion zones", len(exclusion_zones))
-        return roi_mask, None
+        # Only apply zones when the image is large enough to match the
+        # configured layout; avoids masking out small synthetic test images.
+        max_zone_extent = max(
+            max(x + zw, y + zh) for x, y, zw, zh in exclusion_zones
+        )
+        if min(h, w) >= max_zone_extent * 0.5:
+            roi_mask = np.full((h, w), 255, dtype=np.uint8)
+            for zone in exclusion_zones:
+                x, y, zw, zh = zone
+                roi_mask[max(0, y) : min(h, y + zh), max(0, x) : min(w, x + zw)] = 0
+            logger.info("Applied %d exclusion zones", len(exclusion_zones))
+            return roi_mask, None
+        logger.info("Image too small for configured exclusion zones -- skipping")
 
     logger.warning("No exclusion zones configured -- segmenting full image")
     return None, None

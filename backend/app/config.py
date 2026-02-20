@@ -22,11 +22,11 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{_PROJECT_ROOT / 'data' / 'plant_tracker.db'}"
 
     # ── Ruler / size calibration ───────────────────────────────────────
-    # Known physical distance between major tick marks (mm)
-    ruler_tick_distance_mm: float = 10.0
+    # Known physical distance between ruler tick marks (mm)
+    ruler_tick_distance_mm: float = 1.0
     # Optional fixed ROI for the ruler region (x, y, w, h) – None = auto-detect
-    # Tuned for the test-plant images (1440x1080): top-right strip
-    ruler_roi: list[int] | None = [480, 0, 960, 75]
+    # Tuned for 1500x1500 test-plant/01 images: top strip containing ruler ticks
+    ruler_roi: list[int] | None = [280, 0, 1220, 160]
 
     # ── Plant segmentation ─────────────────────────────────────────────
     # HSV ranges for green-plant masking (PlantCV thresholds)
@@ -37,11 +37,11 @@ class Settings(BaseSettings):
     # Minimum contour area (pixels) to keep – filters noise
     min_plant_area_px: int = 500
     # Exclusion zones [x, y, w, h] -- areas to zero out before segmentation
-    # (fallback if petri dish circle detection fails)
+    # Tuned for 1500x1500 test-plant/01 images
     exclusion_zones: list[list[int]] = [
-        [0, 830, 250, 250],      # color chart (bottom-left)
-        [1100, 780, 340, 300],   # QR code (bottom-right)
-        [400, 0, 1040, 80],      # ruler strip (top)
+        [0, 0, 1500, 380],      # ruler + top gray margin
+        [0, 380, 290, 260],     # color chart (left side)
+        [0, 1170, 340, 330],    # QR code (bottom-left)
     ]
 
     # ── Health score weights ───────────────────────────────────────────

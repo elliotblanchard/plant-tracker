@@ -63,25 +63,20 @@ def calibrate_from_ruler(
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # --- Step 1: detect the dominant line (ruler spine) -----------------
-    orientation, angle = _detect_ruler_orientation(gray)
+    # Try both orientations and pick the one with more consistent ticks.
+    # This avoids misclassification when vertical tick marks on a horizontal
+    # ruler dominate Hough line detection.
+    result_h = _find_tick_spacing(np.mean(gray, axis=0), tick_distance_mm)
+    result_v = _find_tick_spacing(np.mean(gray, axis=1), tick_distance_mm)
 
-    # --- Step 2: project intensity along the perpendicular axis ---------
-    if orientation == "horizontal":
-        profile = np.mean(gray, axis=0)
-    elif orientation == "vertical":
-        profile = np.mean(gray, axis=1)
-    else:
-        # Try both orientations and pick the one with more peaks
-        result_h = _find_tick_spacing(np.mean(gray, axis=0), tick_distance_mm)
-        result_v = _find_tick_spacing(np.mean(gray, axis=1), tick_distance_mm)
-        if result_h.tick_count >= result_v.tick_count and result_h.px_per_mm is not None:
-            return result_h
-        if result_v.px_per_mm is not None:
-            return result_v
-        return CalibrationResult(px_per_mm=None, ruler_detected=False)
+    if result_h.px_per_mm is not None and result_v.px_per_mm is not None:
+        return result_h if result_h.tick_count >= result_v.tick_count else result_v
+    if result_h.px_per_mm is not None:
+        return result_h
+    if result_v.px_per_mm is not None:
+        return result_v
 
-    return _find_tick_spacing(profile, tick_distance_mm)
+    return CalibrationResult(px_per_mm=None, ruler_detected=False)
 
 
 def _detect_ruler_orientation(gray: np.ndarray) -> tuple[str, float]:
@@ -146,8 +141,8 @@ def _find_tick_spacing(profile: np.ndarray, tick_distance_mm: float) -> Calibrat
     # Invert so dark tick marks become peaks
     inverted = smoothed.max() - smoothed
 
-    # Find peaks with minimum distance (expect ticks to be at least 10 px apart)
-    min_distance = max(10, len(profile) // 50)
+    # Find peaks with minimum distance between tick marks
+    min_distance = max(5, len(profile) // 150)
     prominence = (inverted.max() - inverted.min()) * 0.15
     peaks, properties = find_peaks(inverted, distance=min_distance, prominence=prominence)
 

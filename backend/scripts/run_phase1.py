@@ -36,11 +36,10 @@ logger = logging.getLogger(__name__)
 
 def collect_images(image_dir: Path) -> list[Path]:
     """Glob for plant images and return them sorted by filename (chronological)."""
-    patterns = ["Plant_*.jpg", "Plant_*.jpeg", "Plant_*.png", "plant_*.jpg", "plant_*.jpeg", "plant_*.png"]
+    extensions = ["*.jpg", "*.jpeg", "*.png"]
     files: list[Path] = []
-    for pattern in patterns:
-        files.extend(image_dir.glob(pattern))
-    # Deduplicate and sort by name
+    for ext in extensions:
+        files.extend(image_dir.glob(ext))
     files = sorted(set(files), key=lambda p: p.name)
     return files
 
@@ -74,12 +73,12 @@ def main() -> None:
     errors: list[str] = []
     plants_seen: set[str] = set()
 
-    # Assign synthetic timestamps: one hour apart, starting now minus N hours
-    base_time = datetime.now(timezone.utc) - timedelta(hours=len(images))
+    # Assign synthetic timestamps: one day apart, starting January 1 of current year
+    base_time = datetime(datetime.now().year, 1, 1, tzinfo=timezone.utc)
 
     try:
         for idx, img_path in enumerate(images):
-            captured_at = base_time + timedelta(hours=idx)
+            captured_at = base_time + timedelta(days=idx)
             logger.info("─── [%d/%d] %s ───", idx + 1, len(images), img_path.name)
 
             # Look up the previous measurement context for growth rate
