@@ -5,6 +5,7 @@ Override via environment variables prefixed with PT_ (e.g. PT_OVERGROWTH_THRESHO
 """
 
 from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -20,6 +21,12 @@ class Settings(BaseSettings):
     project_root: Path = _PROJECT_ROOT
     image_dir: Path = _PROJECT_ROOT / "test-plant"
     database_url: str = f"sqlite:///{_PROJECT_ROOT / 'data' / 'plant_tracker.db'}"
+
+    # ── Lens distortion calibration ───────────────────────────────────
+    # Path to the lens calibration JSON (relative to project_root)
+    lens_calibration_file: str = "calibration/lens_calibration.json"
+    # Set to False to skip undistortion even when a calibration file exists
+    lens_undistort_enabled: bool = True
 
     # ── Ruler / size calibration ───────────────────────────────────────
     # Known physical distance between ruler tick marks (mm)
@@ -39,9 +46,9 @@ class Settings(BaseSettings):
     # Exclusion zones [x, y, w, h] -- areas to zero out before segmentation
     # Tuned for 1500x1500 test-plant/01 images
     exclusion_zones: list[list[int]] = [
-        [0, 0, 1500, 380],      # ruler + top gray margin
-        [0, 380, 290, 260],     # color chart (left side)
-        [0, 1170, 340, 330],    # QR code (bottom-left)
+        [0, 0, 1500, 380],  # ruler + top gray margin
+        [0, 380, 290, 260],  # color chart (left side)
+        [0, 1170, 340, 330],  # QR code (bottom-left)
     ]
 
     # ── Health score weights ───────────────────────────────────────────

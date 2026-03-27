@@ -1,7 +1,8 @@
 """Main analysis pipeline that orchestrates all per-image processing steps.
 
-Call ``analyze_image`` with a file path to run QR detection, ruler calibration,
-plant segmentation, color metrics, and health scoring in sequence.
+Call ``analyze_image`` with a file path to run lens undistortion, QR detection,
+ruler calibration, plant segmentation, color metrics, and health scoring in
+sequence.
 """
 
 import logging
@@ -10,14 +11,27 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-
 from app.analysis.color_metrics import ColorMetrics, extract_color_metrics
 from app.analysis.health_score import compute_health_score, is_overgrown
+from app.analysis.lens_calibration import LensCalibration, load_calibration
 from app.analysis.qr_detection import detect_qr_code
-from app.analysis.segmentation import SegmentationResult, segment_plant
-from app.analysis.size_calibration import CalibrationResult, calibrate_from_ruler
+from app.analysis.segmentation import segment_plant, SegmentationResult
+from app.analysis.size_calibration import calibrate_from_ruler, CalibrationResult
+from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Load lens calibration once at module import time.
+_lens_calibration: LensCalibration | None = None
+if settings.lens_undistort_enabled:
+    _cal_path = settings.project_root / settings.lens_calibration_file
+    _lens_calibration = load_calibration(_cal_path)
+    if _lens_calibration is None:
+        logger.info(
+            "No lens calibration found at %s — images will NOT be undistorted. "
+            "Run 'python -m scripts.calibrate_lens' to generate one.",
+            _cal_path,
+        )
 
 
 @dataclass
@@ -81,6 +95,11 @@ def analyze_image(
 
     logger.info("Analyzing image: %s", image_path.name)
 
+    # 0. Lens undistortion
+    if _lens_calibration is not None:
+        image = _lens_calibration.undistort(image)
+        logger.debug("Applied lens undistortion")
+
     # 1. QR code
     try:
         output.qr_code = detect_qr_code(image)
@@ -107,7 +126,7 @@ def analyze_image(
         output.segmentation_success = seg.success
 
         if seg.success and output.px_per_mm is not None and output.px_per_mm > 0:
-            output.area_mm2 = output.area_px / (output.px_per_mm ** 2)
+            output.area_mm2 = output.area_px / (output.px_per_mm**2)
     except Exception as exc:
         msg = f"Segmentation error: {exc}"
         output.errors.append(msg)
@@ -132,7 +151,9 @@ def analyze_image(
         and previous_measured_hours_ago > 0
         and output.area_mm2 is not None
     ):
-        output.growth_rate = (output.area_mm2 - previous_area_mm2) / previous_measured_hours_ago
+        output.growth_rate = (
+            output.area_mm2 - previous_area_mm2
+        ) / previous_measured_hours_ago
 
     # 6. Health score
     try:
