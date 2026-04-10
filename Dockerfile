@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
-# Copy calibration data
+# Copy calibration data (if present)
 COPY calibration/ /app/calibration/
 
 # Copy frontend build output to be served as static files
@@ -37,7 +37,8 @@ RUN mkdir -p /data/images
 ENV PT_DATABASE_URL=sqlite:////data/plant_tracker.db
 ENV PT_IMAGE_DIR=/data/images
 ENV PT_PROJECT_ROOT=/app
+ENV PT_CORS_ORIGINS='["*"]'
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
