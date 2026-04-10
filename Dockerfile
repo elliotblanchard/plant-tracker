@@ -1,11 +1,12 @@
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
+ARG CACHEBUST=1
 
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-RUN npm run build
+RUN echo "build: $CACHEBUST" && npm run build
 
 # Stage 2: Python backend + serve frontend
 FROM python:3.12-slim
