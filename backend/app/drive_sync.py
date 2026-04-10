@@ -36,12 +36,29 @@ class DriveSync:
         if not creds_input:
             raise ValueError("PT_DRIVE_SERVICE_ACCOUNT_JSON is not set")
 
-        # Accept either a file path or raw JSON string
+        # Accept: file path, raw JSON string, or base64-encoded JSON
         creds_path = Path(creds_input).expanduser()
         if creds_path.is_file():
             info = json.loads(creds_path.read_text())
         else:
-            info = json.loads(creds_input)
+            # Try raw JSON first
+            try:
+                info = json.loads(creds_input)
+            except json.JSONDecodeError:
+                # Try fixing single quotes → double quotes
+                try:
+                    info = json.loads(creds_input.replace("'", '"'))
+                except json.JSONDecodeError:
+                    # Try base64 decoding
+                    import base64
+                    try:
+                        decoded = base64.b64decode(creds_input).decode("utf-8")
+                        info = json.loads(decoded)
+                    except Exception:
+                        raise ValueError(
+                            "PT_DRIVE_SERVICE_ACCOUNT_JSON is not valid JSON, "
+                            "a file path, or base64-encoded JSON"
+                        )
 
         credentials = Credentials.from_service_account_info(
             info,
