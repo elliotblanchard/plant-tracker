@@ -3,11 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import verify_token
 from app.crud import get_plant, list_plants
 from app.database import get_db
 from app.schemas import PlantDetail, PlantSummary
 
-router = APIRouter(prefix="/api/plants", tags=["plants"])
+router = APIRouter(prefix="/api/plants", tags=["plants"], dependencies=[Depends(verify_token)])
 
 
 @router.get("", response_model=list[PlantSummary])

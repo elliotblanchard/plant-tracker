@@ -1,11 +1,12 @@
 """Ruler-based size calibration: detect a ruler in the image and compute px_per_mm.
 
 Strategy:
-1. If a fixed ROI is configured, crop to that region.
-2. Convert to grayscale, threshold to isolate high-contrast ruler markings.
-3. Detect line segments via the Hough transform to locate the ruler spine.
-4. Project tick marks onto the ruler axis and measure their spacing.
-5. Use the known physical tick distance to compute pixels-per-mm.
+1. If ArUCO marker 0 is found, compute a dynamic ruler ROI from the marker position.
+2. Otherwise, fall back to the fixed ROI from config.
+3. Convert to grayscale, threshold to isolate high-contrast ruler markings.
+4. Detect line segments via the Hough transform to locate the ruler spine.
+5. Project tick marks onto the ruler axis and measure their spacing.
+6. Use the known physical tick distance to compute pixels-per-mm.
 """
 
 import logging
@@ -15,6 +16,7 @@ import cv2
 import numpy as np
 from scipy.signal import find_peaks
 
+from app.analysis.aruco_detection import ArucoMarker, get_marker_by_id
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,7 @@ def calibrate_from_ruler(
     image: np.ndarray,
     tick_distance_mm: float | None = None,
     roi: list[int] | None = None,
+    aruco_markers: list[ArucoMarker] | None = None,
 ) -> CalibrationResult:
     """Detect a ruler in the image and compute the pixel-to-mm conversion factor.
 
@@ -43,11 +46,27 @@ def calibrate_from_ruler(
             Defaults to ``settings.ruler_tick_distance_mm``.
         roi: Optional ``[x, y, w, h]`` rectangle to crop the ruler region.
             Defaults to ``settings.ruler_roi``.
+        aruco_markers: Pre-detected ArUCO markers. When marker 0 is found,
+            the ruler ROI is computed dynamically from the marker position.
 
     Returns:
         A ``CalibrationResult`` with ``px_per_mm`` (or ``None`` on failure).
     """
     tick_distance_mm = tick_distance_mm or settings.ruler_tick_distance_mm
+
+    # Try ArUCO-based dynamic ROI first
+    if aruco_markers is not None:
+        marker = get_marker_by_id(aruco_markers, settings.ruler_aruco_id)
+        if marker is not None:
+            h, w = image.shape[:2]
+            cx, cy = marker.center
+            x = max(0, cx - settings.ruler_roi_padding_left)
+            y = max(0, cy - settings.ruler_roi_padding_top)
+            x2 = min(w, cx + settings.ruler_roi_padding_right)
+            y2 = min(h, cy + settings.ruler_roi_padding_bottom)
+            roi = [x, y, x2 - x, y2 - y]
+            logger.info("Using ArUCO-based ruler ROI: %s", roi)
+
     if roi is None:
         roi = settings.ruler_roi
 

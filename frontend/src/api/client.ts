@@ -4,6 +4,29 @@ const api = axios.create({
   baseURL: "/api",
 });
 
+// ── Auth interceptors ─────────────────────────────────────────────────
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("pt_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("pt_token");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 // ── Types ────────────────────────────────────────────────────────────
 
 export interface PlantSummary {
@@ -56,6 +79,22 @@ export interface AnalysisResult {
   images_processed: number;
   plants_found: number;
   errors: string[];
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────
+
+export async function login(password: string): Promise<void> {
+  const { data } = await api.post<{ token: string }>("/login", { password });
+  localStorage.setItem("pt_token", data.token);
+}
+
+export function isAuthenticated(): boolean {
+  return !!localStorage.getItem("pt_token");
+}
+
+export function logout(): void {
+  localStorage.removeItem("pt_token");
+  window.location.href = "/login";
 }
 
 // ── API calls ────────────────────────────────────────────────────────

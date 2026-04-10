@@ -27,3 +27,8 @@ htmlcov/
 
 # Misc
 *.log
+.watchman-cookie-*
+
+# Data / images (local only)
+data/
+test-plant/marchantia_*

@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.auth import verify_token
 from app.crud import get_image, get_measurements_for_plant
 from app.database import get_db
 from app.schemas import ImageOut, MeasurementOut
 
-router = APIRouter(prefix="/api", tags=["images", "measurements"])
+router = APIRouter(prefix="/api", tags=["images", "measurements"], dependencies=[Depends(verify_token)])
 
 
 @router.get("/images/{image_id}", response_model=ImageOut)

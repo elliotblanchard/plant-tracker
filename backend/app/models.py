@@ -41,11 +41,15 @@ class Image(Base):
     """A single time-stamped photograph of a plant."""
 
     __tablename__ = "images"
+    __table_args__ = (
+        UniqueConstraint("source_filename", "plant_id", name="uq_image_source_plant"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     plant_id: Mapped[int] = mapped_column(Integer, ForeignKey("plants.id"), nullable=False, index=True)
     filename: Mapped[str] = mapped_column(String, nullable=False)
     filepath: Mapped[str] = mapped_column(String, nullable=False)
+    source_filename: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
