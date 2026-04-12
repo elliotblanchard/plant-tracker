@@ -32,46 +32,41 @@ class DriveSync:
         from google.oauth2.service_account import Credentials
         from googleapiclient.discovery import build
 
-        creds_input = settings.drive_service_account_json
+        creds_input = settings.drive_service_account_json.strip()
         if not creds_input:
             raise ValueError("PT_DRIVE_SERVICE_ACCOUNT_JSON is not set")
 
-        # Debug: log what we received (first 80 chars, redacted)
-        safe_preview = creds_input[:80].replace("\n", "\\n") if creds_input else "(empty)"
-        logger.warning("DRIVE_CREDS debug: len=%d, starts_with=%r", len(creds_input), safe_preview)
+        import sys
+        print(f"DRIVE_CREDS debug: len={len(creds_input)}, first_char={repr(creds_input[0])}, last_char={repr(creds_input[-1])}", file=sys.stderr, flush=True)
 
         # Accept: file path, raw JSON string, or base64-encoded JSON
         creds_path = Path(creds_input).expanduser()
         if creds_path.is_file():
-            logger.info("Loading credentials from file: %s", creds_path)
+            print(f"DRIVE_CREDS: loading from file {creds_path}", file=sys.stderr, flush=True)
             info = json.loads(creds_path.read_text())
         else:
             # Try raw JSON first
             try:
                 info = json.loads(creds_input)
-                logger.info("Parsed credentials as raw JSON")
+                print("DRIVE_CREDS: parsed as raw JSON", file=sys.stderr, flush=True)
             except json.JSONDecodeError as e1:
-                logger.warning("Raw JSON parse failed: %s", e1)
-                # Try fixing single quotes → double quotes
+                print(f"DRIVE_CREDS: raw JSON failed: {e1}", file=sys.stderr, flush=True)
+                # Try base64 decoding
+                import base64
                 try:
-                    info = json.loads(creds_input.replace("'", '"'))
-                    logger.info("Parsed credentials after quote fix")
-                except json.JSONDecodeError as e2:
-                    logger.warning("Quote-fix parse failed: %s", e2)
-                    # Try base64 decoding
-                    import base64
-                    try:
-                        decoded = base64.b64decode(creds_input).decode("utf-8")
-                        logger.warning("Base64 decoded: len=%d, starts_with=%r", len(decoded), decoded[:80])
-                        info = json.loads(decoded)
-                        logger.info("Parsed credentials from base64")
-                    except Exception as e3:
-                        logger.error("Base64 decode failed: %s", e3)
-                        raise ValueError(
-                            "PT_DRIVE_SERVICE_ACCOUNT_JSON is not valid JSON, "
-                            "a file path, or base64-encoded JSON. "
-                            f"Raw len={len(creds_input)}, preview={safe_preview!r}"
-                        )
+                    # Pad if needed
+                    padded = creds_input + "=" * (4 - len(creds_input) % 4) if len(creds_input) % 4 else creds_input
+                    decoded = base64.b64decode(padded).decode("utf-8")
+                    print(f"DRIVE_CREDS: base64 decoded len={len(decoded)}", file=sys.stderr, flush=True)
+                    info = json.loads(decoded)
+                    print("DRIVE_CREDS: parsed from base64", file=sys.stderr, flush=True)
+                except Exception as e3:
+                    print(f"DRIVE_CREDS: base64 failed: {e3}", file=sys.stderr, flush=True)
+                    raise ValueError(
+                        f"PT_DRIVE_SERVICE_ACCOUNT_JSON is not valid JSON, "
+                        f"a file path, or base64-encoded JSON. "
+                        f"Raw len={len(creds_input)}, first={repr(creds_input[:40])}"
+                    )
 
         credentials = Credentials.from_service_account_info(
             info,
