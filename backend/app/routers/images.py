@@ -31,8 +31,15 @@ def get_image_file(image_id: int, db: Session = Depends(get_db)) -> FileResponse
         raise HTTPException(status_code=404, detail=f"Image {image_id} not found")
 
     filepath = Path(image.filepath)
+
+    # If stored path doesn't exist, try finding by filename in the image dir
     if not filepath.is_file():
-        raise HTTPException(status_code=404, detail=f"Image file not found on disk: {filepath}")
+        from app.config import settings
+        alt_path = Path(settings.image_dir) / image.filename
+        if alt_path.is_file():
+            filepath = alt_path
+        else:
+            raise HTTPException(status_code=404, detail=f"Image file not found on disk: {filepath}")
 
     media_type = "image/jpeg"
     if filepath.suffix.lower() == ".png":
