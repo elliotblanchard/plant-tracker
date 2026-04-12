@@ -36,28 +36,41 @@ class DriveSync:
         if not creds_input:
             raise ValueError("PT_DRIVE_SERVICE_ACCOUNT_JSON is not set")
 
+        # Debug: log what we received (first 80 chars, redacted)
+        safe_preview = creds_input[:80].replace("\n", "\\n") if creds_input else "(empty)"
+        logger.warning("DRIVE_CREDS debug: len=%d, starts_with=%r", len(creds_input), safe_preview)
+
         # Accept: file path, raw JSON string, or base64-encoded JSON
         creds_path = Path(creds_input).expanduser()
         if creds_path.is_file():
+            logger.info("Loading credentials from file: %s", creds_path)
             info = json.loads(creds_path.read_text())
         else:
             # Try raw JSON first
             try:
                 info = json.loads(creds_input)
-            except json.JSONDecodeError:
+                logger.info("Parsed credentials as raw JSON")
+            except json.JSONDecodeError as e1:
+                logger.warning("Raw JSON parse failed: %s", e1)
                 # Try fixing single quotes → double quotes
                 try:
                     info = json.loads(creds_input.replace("'", '"'))
-                except json.JSONDecodeError:
+                    logger.info("Parsed credentials after quote fix")
+                except json.JSONDecodeError as e2:
+                    logger.warning("Quote-fix parse failed: %s", e2)
                     # Try base64 decoding
                     import base64
                     try:
                         decoded = base64.b64decode(creds_input).decode("utf-8")
+                        logger.warning("Base64 decoded: len=%d, starts_with=%r", len(decoded), decoded[:80])
                         info = json.loads(decoded)
-                    except Exception:
+                        logger.info("Parsed credentials from base64")
+                    except Exception as e3:
+                        logger.error("Base64 decode failed: %s", e3)
                         raise ValueError(
                             "PT_DRIVE_SERVICE_ACCOUNT_JSON is not valid JSON, "
-                            "a file path, or base64-encoded JSON"
+                            "a file path, or base64-encoded JSON. "
+                            f"Raw len={len(creds_input)}, preview={safe_preview!r}"
                         )
 
         credentials = Credentials.from_service_account_info(
