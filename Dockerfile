@@ -40,6 +40,9 @@ ENV PT_IMAGE_DIR=/data/images
 ENV PT_PROJECT_ROOT=/app
 ENV PT_CORS_ORIGINS='["*"]'
 
+COPY backend/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["/app/entrypoint.sh"]
