@@ -107,5 +107,18 @@ async def set_drive_credentials(request: Request) -> dict:
 # Serve frontend static files if the build output exists (production / Docker)
 _static_dir = Path(__file__).resolve().parent.parent / "static"
 if _static_dir.is_dir():
-    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")
-    logger.info("Serving frontend static files from %s", _static_dir)
+    from fastapi.responses import FileResponse
+
+    # Serve static assets (JS, CSS, images) at their exact paths
+    app.mount("/assets", StaticFiles(directory=str(_static_dir / "assets")), name="static-assets")
+
+    # Serve other static files (favicon, etc.) and SPA fallback
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve static files or fall back to index.html for SPA routing."""
+        file_path = _static_dir / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_static_dir / "index.html"))
+
+    logger.info("Serving frontend SPA from %s", _static_dir)
