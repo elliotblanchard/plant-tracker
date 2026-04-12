@@ -33,17 +33,18 @@ class DriveSync:
         from googleapiclient.discovery import build
 
         creds_input = settings.drive_service_account_json.strip()
-        if not creds_input:
-            raise ValueError("PT_DRIVE_SERVICE_ACCOUNT_JSON is not set")
 
-        import sys
-        print(f"DRIVE_CREDS debug: len={len(creds_input)}, first_char={repr(creds_input[0])}, last_char={repr(creds_input[-1])}", file=sys.stderr, flush=True)
-
-        # Accept: file path, raw JSON string, or base64-encoded JSON
-        creds_path = Path(creds_input).expanduser()
-        if creds_path.is_file():
-            print(f"DRIVE_CREDS: loading from file {creds_path}", file=sys.stderr, flush=True)
-            info = json.loads(creds_path.read_text())
+        # Check for credentials file on persistent volume first
+        volume_creds = Path("/data/drive-creds.json")
+        if volume_creds.is_file():
+            import sys
+            print(f"DRIVE_CREDS: loading from volume {volume_creds}", file=sys.stderr, flush=True)
+            info = json.loads(volume_creds.read_text())
+        elif not creds_input:
+            raise ValueError(
+                "No Drive credentials found. Either upload via POST /api/set-drive-credentials "
+                "or set PT_DRIVE_SERVICE_ACCOUNT_JSON env var."
+            )
         else:
             # Try raw JSON first
             try:

@@ -5,7 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -78,6 +78,30 @@ def manual_sync() -> dict:
         return sync_and_analyze(db)
     finally:
         db.close()
+
+
+@app.post("/api/set-drive-credentials", dependencies=[Depends(verify_token)])
+async def set_drive_credentials(request: Request) -> dict:
+    """Store Drive service account JSON to the persistent volume.
+
+    Send the raw JSON key file contents as the request body.
+    This only needs to be done once — the file persists across deploys.
+    """
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty request body")
+
+    import json
+    try:
+        json.loads(body)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}")
+
+    creds_path = Path("/data/drive-creds.json")
+    creds_path.parent.mkdir(parents=True, exist_ok=True)
+    creds_path.write_bytes(body)
+
+    return {"status": "ok", "path": str(creds_path), "size": len(body)}
 
 
 # Serve frontend static files if the build output exists (production / Docker)
