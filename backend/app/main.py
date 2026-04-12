@@ -59,6 +59,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(plants.router)
 app.include_router(images.router)
+app.include_router(images.public_router)
 app.include_router(analysis.router)
 
 

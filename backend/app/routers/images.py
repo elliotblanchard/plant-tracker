@@ -23,7 +23,11 @@ def get_image_meta(image_id: int, db: Session = Depends(get_db)) -> ImageOut:
     return ImageOut.model_validate(image)
 
 
-@router.get("/images/{image_id}/file")
+# Separate router without auth — <img> tags can't send JWT headers
+public_router = APIRouter(prefix="/api", tags=["images"])
+
+
+@public_router.get("/images/{image_id}/file")
 def get_image_file(image_id: int, db: Session = Depends(get_db)) -> FileResponse:
     """Serve the actual image file."""
     image = get_image(db, image_id)
